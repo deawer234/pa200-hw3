@@ -1,19 +1,12 @@
-# Build and deploy Python Flask Web App to Azure App Service – photo-web
-#
-# ▸ složka s kódem:      ./webapp
-# ▸ typ nasazení:        ZIP deploy přes publish profile
-# ▸ běží na App Service: photo-web         (Free Tier F1 doporučeno)
-
-name: Build and deploy Python project to Azure App Service - photo-web
+# Build & deploy Python Flask Web App to Azure App Service — pa200-hw3-webapp
+name: Deploy Flask WebApp - pa200-hw3-webapp
 
 on:
   push:
-    branches:
-      - main
+    branches: [main]
   workflow_dispatch:
 
 env:
-  AZURE_WEBAPP_PACKAGE_PATH: './webapp'   # ① balíme právě tuto složku
   PYTHON_VERSION: '3.11'
 
 jobs:
@@ -23,53 +16,43 @@ jobs:
       contents: read
 
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
       - name: Setup Python
         uses: actions/setup-python@v5
         with:
           python-version: ${{ env.PYTHON_VERSION }}
 
-      - name: Create and activate virtual environment
-        run: |
-          python -m venv venv
-          source venv/bin/activate
+      # (volitelné) jednoduchá syntaktická kontrola
+      - name: Lint
+        run: python -m py_compile webapp/*.py
 
-      # ② instalujeme závislosti z webapp/requirements.txt
-      - name: Install dependencies
-        run: pip install -r webapp/requirements.txt
-
-      # Optional: Run tests here
-
-      # ③ vytvoříme ZIP jen se složkou webapp/
+      # 📦 1) vytvoříme ZIP **uvnitř** složky webapp (bez vnořené podsložky)
       - name: Zip artifact for deployment
-        run: zip -r release.zip webapp
+        run: |
+          cd webapp
+          zip -r ../webapp.zip .          # kořen ZIPu = app.py, requirements.txt, …
 
-      - name: Upload artifact for deployment job
+      - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: python-web
-          path: release.zip
+          name: webapp-zip
+          path: webapp.zip
 
   deploy:
     runs-on: ubuntu-latest
     needs: build
 
     steps:
-      - name: Download artifact from build job
+      - name: Download artifact
         uses: actions/download-artifact@v4
         with:
-          name: python-web
+          name: webapp-zip
 
-      - name: Unzip artifact for deployment
-        run: unzip release.zip
-
-      # ④ nasazení do App Service přes publish profile
+      # 🚀 nasazení ZIPu přes publish profile
       - name: Deploy to Azure Web App
         uses: azure/webapps-deploy@v2
         with:
-          app-name: 'pa200-hw3-webapp'   # název App Service v Azure
-          slot-name: 'Production'
-          package: ${{ env.AZURE_WEBAPP_PACKAGE_PATH }}
+          app-name: 'pa200-hw3-webapp'                      # přesný název v Azure
           publish-profile: ${{ secrets.PHOTO_WEB_PUBLISH_PROFILE }}
+          package: webapp.zip                               # ← ZIP s plochým kořenem
