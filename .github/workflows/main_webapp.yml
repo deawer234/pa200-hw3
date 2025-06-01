@@ -1,0 +1,75 @@
+# Build and deploy Python Flask Web App to Azure App Service – photo-web
+#
+# ▸ složka s kódem:      ./webapp
+# ▸ typ nasazení:        ZIP deploy přes publish profile
+# ▸ běží na App Service: photo-web         (Free Tier F1 doporučeno)
+
+name: Build and deploy Python project to Azure App Service - photo-web
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+env:
+  AZURE_WEBAPP_PACKAGE_PATH: './webapp'   # ① balíme právě tuto složku
+  PYTHON_VERSION: '3.11'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Create and activate virtual environment
+        run: |
+          python -m venv venv
+          source venv/bin/activate
+
+      # ② instalujeme závislosti z webapp/requirements.txt
+      - name: Install dependencies
+        run: pip install -r webapp/requirements.txt
+
+      # Optional: Run tests here
+
+      # ③ vytvoříme ZIP jen se složkou webapp/
+      - name: Zip artifact for deployment
+        run: zip -r release.zip webapp
+
+      - name: Upload artifact for deployment job
+        uses: actions/upload-artifact@v4
+        with:
+          name: python-web
+          path: release.zip
+
+  deploy:
+    runs-on: ubuntu-latest
+    needs: build
+
+    steps:
+      - name: Download artifact from build job
+        uses: actions/download-artifact@v4
+        with:
+          name: python-web
+
+      - name: Unzip artifact for deployment
+        run: unzip release.zip
+
+      # ④ nasazení do App Service přes publish profile
+      - name: Deploy to Azure Web App
+        uses: azure/webapps-deploy@v2
+        with:
+          app-name: 'photo-web'   # název App Service v Azure
+          slot-name: 'Production'
+          package: ${{ env.AZURE_WEBAPP_PACKAGE_PATH }}
+          publish-profile: ${{ secrets.PHOTO_WEB_PUBLISH_PROFILE }}
