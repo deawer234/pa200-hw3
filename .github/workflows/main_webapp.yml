@@ -69,7 +69,7 @@ jobs:
       - name: Deploy to Azure Web App
         uses: azure/webapps-deploy@v2
         with:
-          app-name: 'photo-web'   # název App Service v Azure
+          app-name: 'pa200-hw3-webapp'   # název App Service v Azure
           slot-name: 'Production'
           package: ${{ env.AZURE_WEBAPP_PACKAGE_PATH }}
           publish-profile: ${{ secrets.PHOTO_WEB_PUBLISH_PROFILE }}
