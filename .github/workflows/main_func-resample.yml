@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
 
 env:
-  AZURE_FUNCTIONAPP_PACKAGE_PATH: './function'   # Oryx will treat this folder as “wwwroot”
+  AZURE_FUNCTIONAPP_PACKAGE_PATH: '.'   # Oryx will treat this folder as “wwwroot”
   PYTHON_VERSION: '3.11'
 
 jobs:
