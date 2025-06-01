@@ -9,6 +9,7 @@ blob_client = BlobServiceClient.from_connection_string(BLOB_CONN)
 
 def main(msg: func.ServiceBusMessage):
     """Service Bus Queue trigger: zmenší obrázek a uloží thumbnail."""
+    logging.info("Processing message: %s", msg.get_body().decode())
     body = json.loads(msg.get_body().decode())
     url = body["blobUrl"]
     width, height = body.get("targetWidth", 1024), body.get("targetHeight", 768)
