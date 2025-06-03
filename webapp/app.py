@@ -1,4 +1,4 @@
-from flask import Flask, request, render_template_string, redirect, url_for
+from flask import Flask, request, render_template_string, redirect, url_for, jsonify
 from azure.storage.blob import BlobServiceClient
 from azure.servicebus import ServiceBusClient, ServiceBusMessage
 import os, uuid, json
@@ -44,7 +44,33 @@ def index():
 
     return render_template_string(FORM)
 
+RESULT_PAGE = """
+<script>
+function checkStatus() {
+  fetch('/check/{{ filename }}')
+    .then(response => response.json())
+    .then(data => {
+      if (data.ready) {
+        document.getElementById('status').innerHTML = `<a href='${data.url}'>Download resized image</a>`;
+      } else {
+        setTimeout(checkStatus, 3000);
+      }
+    });
+}
+checkStatus();
+</script>
+
+<div id='status'>Checking status...</div>
+"""
+
 @app.route("/result/<filename>")
 def result(filename):
-    thumb_url = f"https://{blob.account_name}.blob.core.windows.net/thumbs/{filename}"
-    return f"Resized image will be ready soon: <a href='{thumb_url}'>Download here</a>"
+    return render_template_string(RESULT_PAGE, filename=filename)
+
+@app.route("/check/<filename>")
+def check(filename):
+    thumb_blob = blob.get_blob_client("thumbs", filename)
+    if thumb_blob.exists():
+        thumb_url = f"https://{blob.account_name}.blob.core.windows.net/thumbs/{filename}"
+        return jsonify({"ready": True, "url": thumb_url})
+    return jsonify({"ready": False})
