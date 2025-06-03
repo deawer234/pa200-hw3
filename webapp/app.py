@@ -1,7 +1,9 @@
 from flask import Flask, request, render_template_string, redirect, url_for, jsonify
-from azure.storage.blob import BlobServiceClient
+from azure.storage.blob import BlobServiceClient, generate_blob_sas, BlobSasPermissions
 from azure.servicebus import ServiceBusClient, ServiceBusMessage
+from datetime import datetime, timedelta
 import os, uuid, json
+
 
 app = Flask(__name__)
 
@@ -71,6 +73,16 @@ def result(filename):
 def check(filename):
     thumb_blob = blob.get_blob_client("thumbs", filename)
     if thumb_blob.exists():
-        thumb_url = f"https://{blob.account_name}.blob.core.windows.net/thumbs/{filename}"
+        sas_token = generate_blob_sas(
+            account_name=blob.account_name,
+            container_name="thumbs",
+            blob_name=filename,
+            account_key=blob.credential.account_key,
+            permission=BlobSasPermissions(read=True),
+            expiry=datetime.utcnow() + timedelta(hours=1)
+        )
+
+        thumb_url = f"https://{blob.account_name}.blob.core.windows.net/thumbs/{filename}?{sas_token}"
         return jsonify({"ready": True, "url": thumb_url})
+    
     return jsonify({"ready": False})
